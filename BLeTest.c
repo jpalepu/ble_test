@@ -178,7 +178,7 @@ static void host_task(void *param)
 {
     nimble_port_run();
 }
-
+/*
 esp_err_t ble_init(){
 
     nvs_flash_init();
@@ -201,9 +201,28 @@ void app_main()
     ble_gatts_add_svcs(gatt_svcs);
     ble_hs_cfg.sync_cb = ble_app_on_sync;
     nimble_port_freertos_init(host_task);
+}*/
+
+
+
+esp_err_t ble_init(){
+    
+    nvs_flash_init();
+    esp_nimble_hci_init();
+    nimble_port_init();
+    ble_svc_gap_init();
+    ble_svc_gatt_init();
+    ble_svc_gap_device_name_set("BLE-Server");
+    cnt_timer = xTimerCreate("count timer", pdMS_TO_TICKS(25000), pdTRUE, 0, notify_device);
+    cnt_reset();
+    ble_gatts_count_cfg(gatt_svcs);
+    ble_gatts_add_svcs(gatt_svcs);
+    ble_hs_cfg.sync_cb = ble_app_on_sync;
+    nimble_port_freertos_init(host_task);
+
+    return ESP_OK;
+
 }
-
-
 
 
 
