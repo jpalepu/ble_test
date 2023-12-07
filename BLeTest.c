@@ -235,6 +235,7 @@ void app_main(){
             ESP_LOGI(TAG, "Disconnected!");
         }
     }
+    ble_stop_advertise();
     ESP_LOGI(TAG, "Stopped Advertising..");
 }
 
