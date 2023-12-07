@@ -210,21 +210,26 @@ void ble_deinit(){
 
 void app_main(){
 
-    uint64_t time = 65 * 1000 * 1000;
-    uint8_t ret;
+
     ble_init();
+
     ble_hs_cfg.sync_cb = ble_app_on_sync;
     nimble_port_freertos_init(host_task);
-    
+
     ESP_LOGI(TAG, "Initialized the Ble-Server");
     
     // cnt_timer = xTimerCreate("count timer", pdMS_TO_TICKS(20000), pdTRUE, 0, notify_device);
     // cnt_reset();
-
+    
+    vTaskDelay(pdMS_TO_TICKS(1999));
     current_time = esp_timer_get_time();
+    
+    
     ESP_LOGI(TAG, "start time: %d Current time: %d", start_time, current_time);
-    while((start_time - current_time) < 100000){
+    
+    while( current_time - start_time < 60 * 1000 * 1000){
         
+        //ESP_LOGI(TAG, "start time: %d Current time: %d", start_time, current_time);
         vTaskDelay(pdMS_TO_TICKS(100));
     
         
@@ -238,7 +243,9 @@ void app_main(){
             conn_prev_state = conn_state;
             ESP_LOGI(TAG, "Disconnected!");
             current_time = esp_timer_get_time();
+           
         }
+        current_time = esp_timer_get_time();
     }
     ble_stop_advertise();
     ESP_LOGI(TAG, "Stopped Advertising..");
