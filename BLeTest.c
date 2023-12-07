@@ -19,7 +19,7 @@ const char *TAG = "BLE-Server";
 uint8_t ble_addr;
 uint16_t notification_handle=0;
 uint16_t conn_handle;
-TimerHandle_t cnt_timer=NULL;
+TimerHandle_t cnt_timer=0;
 int count, start_time, current_time;
 uint16_t waitTime; //variable to wait for 20 minutes to have some connection else Nimble stack shutdown
 
@@ -78,7 +78,23 @@ void notify_device(TimerHandle_t ev) {
     cnt_reset();
 }
 
-static void cnt_reset(void)
+
+void send_payload(char *payload) {
+ 
+    if (is_subscribed && notification_handle != 0) {
+ 
+        struct os_mbuf *om;
+        int rc;
+
+        om = ble_hs_mbuf_from_flat(payload, strlen(payload));
+        rc = ble_gatts_notify_custom(conn_handle, notification_handle, om);
+        if (rc != 0) {
+            ESP_LOGE(TAG, "Error notifying; rc = %d", rc);
+        }
+    }
+}
+
+void cnt_reset(void)
 {
     int rc;
     if (xTimerReset(cnt_timer, 1000 / portTICK_PERIOD_MS ) == pdPASS) {
@@ -91,21 +107,21 @@ static void cnt_reset(void)
 }
 
 // Write data to ESP32 defined as server
-static int device_write(uint16_t conn_handle, uint16_t attr_handle, struct ble_gatt_access_ctxt *ctxt, void *arg)
+int device_write(uint16_t conn_handle, uint16_t attr_handle, struct ble_gatt_access_ctxt *ctxt, void *arg)
 {
     printf("Data from the client: %.*s\n", ctxt->om->om_len, ctxt->om->om_data);
     return 0;
 }
 
 // Read data from ESP32 defined as server
-static int device_read(uint16_t conn_handle, uint16_t attr_handle, struct ble_gatt_access_ctxt *ctxt, void *arg)
+int device_read(uint16_t conn_handle, uint16_t attr_handle, struct ble_gatt_access_ctxt *ctxt, void *arg)
 {
     os_mbuf_append(ctxt->om, "test send/read from server", strlen("send/read test server"));
     return 0;
 }
 
 // BLE event handling
-static int ble_gap_event(struct ble_gap_event *event, void *arg) 
+int ble_gap_event(struct ble_gap_event *event, void *arg) 
 {
     switch (event->type)
     {
@@ -144,21 +160,6 @@ static int ble_gap_event(struct ble_gap_event *event, void *arg)
 }
 
 
-void send_payload(char *payload) {
- 
-    if (is_subscribed && notification_handle != 0) {
- 
-        struct os_mbuf *om;
-        int rc;
-
-        om = ble_hs_mbuf_from_flat(payload, strlen(payload));
-        rc = ble_gatts_notify_custom(conn_handle, notification_handle, om);
-        if (rc != 0) {
-            ESP_LOGE(TAG, "Error notifying; rc = %d", rc);
-        }
-    }
-}
-
 // Define the BLE connection, then use the field to adverstise the data. this is more like structuring the packet to adverstise
  int ble_app_advertise(void)
 {
@@ -182,16 +183,16 @@ void send_payload(char *payload) {
     
     if (is_subscribed) {
         // we start the tiemr
-        if (cnt_timer == NULL) {
+        if (cnt_timer == 0) {
            cnt_timer = xTimerCreate("count timer", pdMS_TO_TICKS(20000), pdTRUE, 0, notify_device);
             }
         cnt_reset();
         } 
         else {
             // Stop the tinmer with no subscription. 
-            if (cnt_timer != NULL) {
+            if (cnt_timer != 0) {
                 xTimerDelete(cnt_timer, 0);
-                cnt_timer = NULL;
+                cnt_timer = 0;
             }
         }
     return ret;
