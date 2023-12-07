@@ -19,19 +19,21 @@ const char *TAG = "BLE-Server";
 uint8_t ble_addr;
 uint16_t notification_handle=0;
 uint16_t conn_handle;
-TimerHandle_t cnt_timer;
+TimerHandle_t cnt_timer=NULL;
 int count, start_time, current_time;
 uint16_t waitTime; //variable to wait for 20 minutes to have some connection else Nimble stack shutdown
 
 
 bool conn_state         = false;
 bool conn_prev_state    = false;
+bool is_subscribed      = false;
 
 static int device_write(uint16_t conn_handle, uint16_t attr_handle, struct ble_gatt_access_ctxt *ctxt, void *arg);
 static int device_read(uint16_t conn_handle, uint16_t attr_handle, struct ble_gatt_access_ctxt *ctxt, void *arg);
 static int ble_gap_event(struct ble_gap_event *event, void *arg); //this is just to notify an event, it can be connection or anything. 
 static int ble_app_advertise(void);
 static void cnt_reset(void);
+void send_payload(char *payload);
 
 
 // BLE GATT service definition: write from the client to the server. 
@@ -62,22 +64,17 @@ static const struct ble_gatt_svc_def gatt_svcs[] = {
     {0}, // End of services
 }; 
 
-static void notify_device(TimerHandle_t ev){
-    struct os_mbuf *om;
-    int rc;
+void notify_device(TimerHandle_t ev) {
+    
     count++;
 
-    if(notification_handle==0){
+    if (notification_handle == 0) {
         cnt_reset();
         return;
     }
 
-    om = ble_hs_mbuf_from_flat(&count, sizeof(count));
-    rc = ble_gatts_notify_custom((uint16_t)conn_handle, notification_handle, om);
-    assert(rc == 0);
-    if (rc != 0) {
-        ESP_LOGE(TAG, "error notifying; rc = %d", rc);
-    }
+    send_payload("payload");
+
     cnt_reset();
 }
 
@@ -127,8 +124,18 @@ static int ble_gap_event(struct ble_gap_event *event, void *arg)
         ESP_LOGI(TAG, "BLE GAP EVENT FINISHED...");
         ble_app_advertise();
         break;
+
     case BLE_GAP_EVENT_SUBSCRIBE:
-        ESP_LOGI("BLE_GAP_SUBSCRIBE_EVENT", "conn_handle from subscribe=%d", conn_handle);
+        ESP_LOGI(TAG, "SUBSCRIPTION TOOK PLACE");
+        if (event->subscribe.attr_handle == notification_handle) {
+            is_subscribed = event->subscribe.cur_notify != 0;
+            if (is_subscribed) {
+                ESP_LOGI(TAG, "Client subscribed to notifications");
+            }
+            else {
+            ESP_LOGI(TAG, "Client unsubscribed from notifications");
+            }
+        }
         break;
     default:
         break;
@@ -136,6 +143,21 @@ static int ble_gap_event(struct ble_gap_event *event, void *arg)
     return 0;
 }
 
+
+void send_payload(char *payload) {
+ 
+    if (is_subscribed && notification_handle != 0) {
+ 
+        struct os_mbuf *om;
+        int rc;
+
+        om = ble_hs_mbuf_from_flat(payload, strlen(payload));
+        rc = ble_gatts_notify_custom(conn_handle, notification_handle, om);
+        if (rc != 0) {
+            ESP_LOGE(TAG, "Error notifying; rc = %d", rc);
+        }
+    }
+}
 
 // Define the BLE connection, then use the field to adverstise the data. this is more like structuring the packet to adverstise
  int ble_app_advertise(void)
@@ -157,9 +179,22 @@ static int ble_gap_event(struct ble_gap_event *event, void *arg)
 
     ESP_LOGI(TAG, " ADVERTISING...");
     uint8_t ret = ble_gap_adv_start(ble_addr, NULL, BLE_HS_FOREVER, &adv_params, ble_gap_event, NULL);
-
+    
+    if (is_subscribed) {
+        // we start the tiemr
+        if (cnt_timer == NULL) {
+           cnt_timer = xTimerCreate("count timer", pdMS_TO_TICKS(20000), pdTRUE, 0, notify_device);
+            }
+        cnt_reset();
+        } 
+        else {
+            // Stop the tinmer with no subscription. 
+            if (cnt_timer != NULL) {
+                xTimerDelete(cnt_timer, 0);
+                cnt_timer = NULL;
+            }
+        }
     return ret;
-
 }
 
 int ble_stop_advertise(){
@@ -217,11 +252,8 @@ void app_main(){
     nimble_port_freertos_init(host_task);
 
     ESP_LOGI(TAG, "Initialized the Ble-Server");
-    
-    // cnt_timer = xTimerCreate("count timer", pdMS_TO_TICKS(20000), pdTRUE, 0, notify_device);
-    // cnt_reset();
-    
-    vTaskDelay(pdMS_TO_TICKS(1999));
+
+    vTaskDelay(pdMS_TO_TICKS(1000));
     current_time = esp_timer_get_time();
     
     
