@@ -107,8 +107,6 @@ static int device_read(uint16_t conn_handle, uint16_t attr_handle, struct ble_ga
     return 0;
 }
 
-
-
 // BLE event handling
 static int ble_gap_event(struct ble_gap_event *event, void *arg) 
 {
@@ -163,10 +161,11 @@ static int ble_gap_event(struct ble_gap_event *event, void *arg)
 
 }
 
-void ble_stop_advertise(){
+int ble_stop_advertise(){
 
+    ESP_LOGI(TAG, "Stopping advertising");
     ble_gap_adv_stop();
-
+    return 0;
 }
 
 // BLE application synchronization callback
@@ -207,18 +206,6 @@ void ble_deinit(){
 
 }
 
-// initialization of the hardware inside. 
-// void app_main()
-// {   
-//     ble_init();
-//     cnt_timer = xTimerCreate("count timer", pdMS_TO_TICKS(20000), pdTRUE, 0, notify_device);
-//     cnt_reset();
-//     vTaskDelay(pdMS_TO_TICKS(20000));
-//     if(esp_timer_get_time() < 500 * 1000 * 1000){
-//     ble_app_advertise();
-//     }
-
-// }
 
 void app_main(){
 
@@ -230,9 +217,9 @@ void app_main(){
     
     // cnt_timer = xTimerCreate("count timer", pdMS_TO_TICKS(20000), pdTRUE, 0, notify_device);
     // cnt_reset();
-    
+
     current_time = esp_timer_get_time();
-    //(start_time - current_time) > 10000
+   
     while((start_time - current_time) < 100000){
         
         vTaskDelay(pdMS_TO_TICKS(100));
