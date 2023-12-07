@@ -231,7 +231,6 @@ void app_main(){
     // cnt_timer = xTimerCreate("count timer", pdMS_TO_TICKS(20000), pdTRUE, 0, notify_device);
     // cnt_reset();
     
-    // while(esp_timer_get_time() < time){
     current_time = esp_timer_get_time();
     //(start_time - current_time) > 10000
     while((start_time - current_time) < 100000){
