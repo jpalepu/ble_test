@@ -2,11 +2,13 @@
 
 #include <stdint.h>
 #include "esp_err.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "timers.h"
 
 namespace irreo::iot_services
 
 { 
-
     /// @brief Initialize Ble Nimble Service
     /// @return ESP_OK on success.
     /// @note this function is thread safe.
@@ -20,30 +22,18 @@ namespace irreo::iot_services
     /// @brief used to define the ble connection and uses "fields to advertise".
     /// @return 0 on successfull connection: starts advertising. 
     /// @note A valid result is returned only after ble_init() has been called, otherwise advertising will not work. 
-    static int ble_app_advertise(void);
+    int ble_app_advertise(void);
+
+    /// @brief Used to stop the ble advertising. 
+    /// @return 0 on successfull connection. Stops advertising
+    /// @note should be called only after the advertising. 
+    int ble_app_stop_advertise(void);
 
     /// @brief Used for BLE event handling (connect/disconncted/subscribed)
     /// @param event Represents a GAP-related event.
     /// @return 0 on success.
     /// @note this function is thread safe.
-    static int ble_gap_event(struct ble_gap_event *event, void *arg); 
-
-    /// @brief This function is to write the data from the peripheral into the server.  
-    /// @param conn_handle connection handle for the peripheral
-    /// @param attr_handle
-    /// @param ctxt data that has to be written (from the os buffer)
-    /// @param arg 
-    /// @return ESP_OK on success 
-    /// @note Server is only capable of writing the data. We cannot read the data of the server.
-    esp_err_t device_write(uint16_t conn_handle, uint16_t attr_handle, struct ble_gatt_access_ctxt *ctxt, void *arg);
-
-    /// @brief This function will read the data to the client from the peripherals
-    /// @param conn_handle 
-    /// @param attr_handle 
-    /// @param ctxt 
-    /// @param arg 
-    /// @return ESP_OK on success 
-    esp_err_t device_read(uint16_t conn_handle, uint16_t attr_handle, struct ble_gatt_access_ctxt *ctxt, void *arg);
+    int ble_gap_event(struct ble_gap_event *event, void *arg); 
 
     /// @brief This function is synchonization (host and controller) callback does automatic address calculation (if not mentioned. This happens after startup/reset. 
     /// @return ESP_OK on success
