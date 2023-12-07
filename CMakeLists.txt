@@ -1,4 +1,4 @@
-idf_component_register(SRCS "ble_tests_impl.c" "BLeTest.c"
+idf_component_register(SRCS "BLeTest.c" 
                     INCLUDE_DIRS "."
                     REQUIRES driver bt freertos nvs_flash
                     )
