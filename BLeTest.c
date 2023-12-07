@@ -157,6 +157,7 @@ static int ble_gap_event(struct ble_gap_event *event, void *arg)
 
     ESP_LOGI(TAG, " ADVERTISING...");
     uint8_t ret = ble_gap_adv_start(ble_addr, NULL, BLE_HS_FOREVER, &adv_params, ble_gap_event, NULL);
+
     return ret;
 
 }
@@ -171,9 +172,9 @@ int ble_stop_advertise(){
 // BLE application synchronization callback
 static void ble_app_on_sync(void)
 {
-   //struct ble_gap_event *event; && event->connect.status != 0
-    ble_hs_id_infer_auto(0, &ble_addr);
+    ESP_LOGI(TAG, "came here");
     start_time = esp_timer_get_time();
+    ble_hs_id_infer_auto(0, &ble_addr);
     ble_app_advertise();
 }
 // Host task
@@ -192,8 +193,8 @@ void ble_init(){
     ble_svc_gap_device_name_set("BLE-Server");
     ble_gatts_count_cfg(gatt_svcs);
     ble_gatts_add_svcs(gatt_svcs);
-    ble_hs_cfg.sync_cb = ble_app_on_sync;
-    nimble_port_freertos_init(host_task);
+    // ble_hs_cfg.sync_cb = ble_app_on_sync;
+    // nimble_port_freertos_init(host_task);
 
 }
 
@@ -212,14 +213,16 @@ void app_main(){
     uint64_t time = 65 * 1000 * 1000;
     uint8_t ret;
     ble_init();
-
+    ble_hs_cfg.sync_cb = ble_app_on_sync;
+    nimble_port_freertos_init(host_task);
+    
     ESP_LOGI(TAG, "Initialized the Ble-Server");
     
     // cnt_timer = xTimerCreate("count timer", pdMS_TO_TICKS(20000), pdTRUE, 0, notify_device);
     // cnt_reset();
 
     current_time = esp_timer_get_time();
-   
+    ESP_LOGI(TAG, "start time: %d Current time: %d", start_time, current_time);
     while((start_time - current_time) < 100000){
         
         vTaskDelay(pdMS_TO_TICKS(100));
@@ -228,11 +231,13 @@ void app_main(){
         if(conn_state && conn_state != conn_prev_state) {
             conn_prev_state = conn_state;
             ESP_LOGI(TAG, "Connection Made!");
+            current_time = esp_timer_get_time();
         }
         
         if(!conn_state && conn_state != conn_prev_state){
             conn_prev_state = conn_state;
             ESP_LOGI(TAG, "Disconnected!");
+            current_time = esp_timer_get_time();
         }
     }
     ble_stop_advertise();
